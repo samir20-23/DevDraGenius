@@ -1,52 +1,81 @@
-'use client'
-import { useState, useEffect } from 'react'
+'use client';
 
-type Item = { id: number; name: string; done: boolean }
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 
 export default function Home() {
-  const [items, setItems] = useState<Item[]>([])
-  const [name, setName] = useState('')
+  const [token, setToken] = useState('');
+  const [todos, setTodos] = useState([]);
+  const [title, setTitle] = useState('');
+
+  const fetchTodos = async () => {
+    const res = await axios.get('/api/todos', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setTodos(res.data);
+  };
+
+  const handleAdd = async () => {
+    await axios.post(
+      '/api/todos',
+      { title },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setTitle('');
+    fetchTodos();
+  };
 
   useEffect(() => {
-    fetch('/api/items')
-      .then(res => res.json())
-      .then(setItems)
-  }, [])
-
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) return // prevent empty submissions
-    const res = await fetch('/api/items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
-    if (res.ok) {
-      const newItem = await res.json()
-      setItems([...items, newItem])
-      setName('')
+    const savedToken = localStorage.getItem('token');
+    if (savedToken) {
+      setToken(savedToken);
+      fetchTodos();
     }
-  }
+  }, []);
 
   return (
-    <main>
-      <form onSubmit={create}>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="New item"
-          required
-        />
-        <button type="submit">Add</button>
-      </form>
-
-      <ul>
-        {items.map(item => (
-          <li key={item.id}>
-            {item.name} {item.done ? '(done)' : ''}
-          </li>
-        ))}
-      </ul>
+    <main className="p-4">
+      {!token ? (
+        <AuthForm setToken={setToken} />
+      ) : (
+        <>
+          <h1 className="text-xl mb-2">Your Todo List</h1>
+          <input
+            className="border p-1 mr-2"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <button onClick={handleAdd} className="bg-blue-500 text-white px-2 py-1">
+            Add
+          </button>
+          <ul className="mt-4">
+            {todos.map((todo: any) => (
+              <li key={todo.id}>{todo.title}</li>
+            ))}
+          </ul>
+        </>
+      )}
     </main>
-  )
+  );
+}
+
+function AuthForm({ setToken }: { setToken: (t: string) => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = async () => {
+    const res = await axios.post('/api/login', { email, password });
+    const token = res.data.token;
+    localStorage.setItem('token', token);
+    setToken(token);
+  };
+
+  return (
+    <div>
+      <h2>Login</h2>
+      <input className="border p-1 block mb-2" placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+      <input className="border p-1 block mb-2" type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+      <button onClick={handleLogin} className="bg-green-500 text-white px-2 py-1">Login</button>
+    </div>
+  );
 }

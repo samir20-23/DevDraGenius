@@ -7,8 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Item {
-  id    Int     @id @default(autoincrement())
-  name  String
-  done  Boolean @default(false)
+model User {
+  id       String   @id @default(uuid())
+  email    String   @unique
+  password String
+  todos    Todo[]
+  createdAt DateTime @default(now())
+}
+
+model Todo {
+  id        String   @id @default(uuid())
+  title     String
+  completed Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
